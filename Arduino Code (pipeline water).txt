@@ -1,0 +1,432 @@
+#include <DS3231.h>
+#include <LiquidCrystal_I2C.h>
+#include <EEPROM.h>
+#define ON LOW
+#define OFF HIGH
+
+const String verDate = "01-Mar-20" ;
+const int startHour = 5 ; //******* 
+const int startMin = 30 ; //******* 
+const int endHour = 8 ; //******* 
+const int endMin = 30 ; //******* 
+
+//int endHour = 23 ; //******* 
+//int endMin = 30 ; //******* 
+
+const int sensorLimit1 = 790;          //*******
+const int sensorLimit2 = 720;          //*******
+int sensorValue1;  
+int sensorValue2;  
+const int motorTempRunInterval = 15 ; // in minutes
+
+const int motorRelay1 = 2;
+const int motorRelay2 = 3;
+const int sensorPin1 = A0; 
+const int sensorPin2 = A1; 
+
+int currentDay ;
+int lastMotorDay ;
+int currentMonth ;
+int currentYear;
+int currentHour ;
+int currentMin ;
+int lastWaterDay  ;  
+int lastWaterMonth  ;  
+int lastWaterYear  ; 
+String l1;
+String l2;
+String l3;
+String l4;
+boolean motorDay;
+int motorFlag1;
+int motorFlag2;
+int motorTempOff1;
+int motorTempOff2;
+int nextTempRunHour1 ;
+int nextTempRunMin1 ;
+int nextTempRunHour2 ;
+int nextTempRunMin2 ;
+String strMotorDay;
+String strMotarStatus1;
+String strMotarStatus2;
+boolean printFlag ;
+
+DS3231 rtc;
+RTCDateTime now;
+LiquidCrystal_I2C lcd(0x27,2,1,0,4,5,6,7); // 0x27 is the default I2C bus address of the backpack-see article
+
+void setup() {
+  Serial.begin(9600);
+  rtc.begin(); 
+  lcd.begin (20,4); // 20 x 4 LCD module
+  lcd.setBacklightPin(3,POSITIVE); // BL, BL_POL
+  lcd.setBacklight(HIGH);
+  delay(1000);
+  
+  l1 = "JAI GURU DEV" ;
+  l2 = "JAI SHIV SHANKAR" ;
+  l3 = "Ver Date: " + verDate ;
+  l4 = "SL1: " + String(sensorLimit1) + " SL2: " + String(sensorLimit2) ;
+  printLCD() ;
+  printSerial(false);
+  delay(5000);
+  
+  l3 = "Start Check:" + String(startHour) + ":" + String(startMin) ;
+  l4 = "End Check  : " + String(endHour) + ":" + String(endMin) ;
+  printLCD() ;
+  printSerial(  false); 
+ 
+  //rtc.setDateTime(__DATE__, __TIME__); //TO SET CURRENT DATE TIME
+  //EEPROM.write (0, 8) ;  //LAST WATER DAY
+  //EEPROM.write (1, 12) ;  //LAST WATER MONTH
+  //EEPROM.write (2, 19) ; //LAST WATER YEAR
+  
+  lastWaterDay = EEPROM.read(0); 
+  lastWaterMonth = EEPROM.read(1); 
+  lastWaterYear = 2000  + EEPROM.read(2); 
+
+  l4 = "" ;
+  getMotorDay();
+  //motorDay =  true;
+  
+  pinMode(motorRelay1, OUTPUT);
+  pinMode(motorRelay2, OUTPUT);
+  digitalWrite(motorRelay1, OFF);  
+  digitalWrite(motorRelay2, OFF);  
+}
+
+void loop() {
+              now = rtc.getDateTime(); 
+              currentDay =  now.day;
+              currentHour = now.hour;
+              currentMin = now.minute;
+              
+              if (lastMotorDay != currentDay ){
+                motorTempOff1 = 0 ;
+                motorTempOff2 = 0 ;
+                getMotorDay();
+                }
+              
+              sensorValue1 = analogRead(sensorPin1); 
+              sensorValue2 = analogRead(sensorPin2); 
+
+              if(motorDay==0){ strMotorDay =  "NO" ;} else{ strMotorDay= "YES" ;} ;
+              l1 = "NOW:" + String(currentHour) + ":" + String(currentMin) + " WTR DY:" +  strMotorDay ; 
+              l2 = "SV1:" + String(sensorValue1) + "  SV2:" + String(sensorValue2) ; 
+
+              if (motorFlag1 == 1 ){ strMotarStatus1 = "ON"; }
+              else if(motorFlag1 == 0 && motorTempOff1 == 0) { strMotarStatus1 = "OFF"; }
+              else if(motorFlag1 == 0 && motorTempOff1 == 1){ strMotarStatus1 = "OFFx" ;  }
+          
+              if (motorFlag2 == 1 ){ strMotarStatus2 = "ON";   }
+              else if (motorFlag2 == 0 && motorTempOff2 == 0){ strMotarStatus2 = "OFF"; }   
+              else if (motorFlag2 == 0 && motorTempOff2 == 1){  strMotarStatus2 = "OFFx";  }
+             
+              l3 =  "MTR1:" + strMotarStatus1 + "  MTR2:" + strMotarStatus2  ;  
+
+             if ((motorFlag1 == 1 || motorFlag1 == 1) || motorDay == 0 ){  l4 = "" ;    } //if motor are running or not motorday
+    
+              printLCD() ;
+              printSerial(false);
+
+              //CHECKING MOTOR 1
+              if (sensorValue1 < sensorLimit1) {
+                    if (motorFlag1 == 0 ){
+                        l3 = "WTR DETD-MTR1:ON" ;
+                        digitalWrite(motorRelay1, ON); //START MOTOR 1
+                        motorFlag1 = 1 ; 
+                        printLCD() ; 
+                        printSerial(true); 
+                      }
+                     else {
+                        l3 = "MTR1:RUNNING OK" ;
+                        printLCD() ; 
+                        printSerial(true); 
+                      }
+                }
+              else if (sensorValue1 > sensorLimit1 && motorFlag1 == 1){
+                    l3 = "SV1:" + String(sensorValue1) + " NO WR,WTNG" ;
+                    printLCD() ;
+                    printSerial(true);
+                    delay(25000); //25 seconds wait
+                    
+                    sensorValue1 = analogRead(sensorPin1); 
+                            if (sensorValue1 > sensorLimit1) {   
+                                      l3 = "SV1:" + String(sensorValue1) + " NO WR,WTNG" ;
+                                      printLCD() ;
+                                      printSerial(true);
+                                      delay(25000); //25 seconds wait
+                                      sensorValue1 = analogRead(sensorPin1); 
+                                      printLCD() ; 
+                                      printSerial(true);    
+                                      
+                                              if (sensorValue1 > sensorLimit1) {
+                                                l3  = "SV:" + String(sensorValue1) + " MTR1:OFF" ;
+                                                printLCD() ;
+                                                printSerial(true);
+                                                digitalWrite(motorRelay1, OFF); //STOP MOTOR 1
+                                                motorFlag1 = 0;
+                                                delay(2000);
+                                                //motorTempOff1 = 1 ;
+                                              }
+                              }
+               } 
+               
+               else if (( startHour < currentHour || (startHour == currentHour && startMin <= currentMin) ) && 
+                ( endHour > currentHour || (endHour == currentHour && endMin >= currentMin) ) && motorFlag1 == 0 && motorTempOff1 == 0 && motorDay == true ) {
+                  
+                  if ( nextTempRunHour1 == currentHour && nextTempRunMin1 <= currentMin ) {
+                        motorTestRun1();
+                    }
+           }
+
+           delay(5000); // 5 sec wait
+
+           //CHECKING MOTOR 2
+            if (sensorValue2 < sensorLimit2 ) {
+                    if (motorFlag2 == 0 ){
+                        l3 = "WTR DETD: MTR2:ON" ;
+                        digitalWrite(motorRelay2, ON); // START MOTOR 2
+                        motorFlag2 = 1 ;
+                        printLCD() ;
+                        printSerial(true);
+                    }
+                    else {
+                        l3 = "MTR2:RUNNING OK" ;
+                        printLCD() ; 
+                        printSerial(true); 
+                    }
+                }
+                
+               else if (sensorValue2 > sensorLimit2 && motorFlag2 == 1){
+                    l3 = "SV2:" + String(sensorValue2) + " NO WR,WTNG" ;
+                    printLCD() ;
+                    printSerial(true);
+                    delay(25000); //25 seconds wait
+                    printSerial(true);
+                    
+                    sensorValue1 = analogRead(sensorPin2); 
+                            if (sensorValue2 > sensorLimit2) {   
+                                      l3 = "SV2:" + String(sensorValue2) + " NO WR,WTNG" ;
+                                      printLCD() ;
+                                      printSerial(true);
+                                      delay(25000); //25 seconds wait
+                                      sensorValue2 = analogRead(sensorPin2); 
+                                      
+                                              if (sensorValue2 > sensorLimit2) {
+                                                l3 = "SV2:" + String(sensorValue1) + " MTR2:OFF" ;
+                                                printLCD() ;
+                                                printSerial(true);
+                                                digitalWrite(motorRelay2, OFF); //STOP MOTOR 2
+                                                motorFlag2 = 0;
+                                                delay(2000);
+                                                //motorTempOff2 = 1 ;
+                                              }
+                              }
+               } 
+               
+               else if (( startHour < currentHour || (startHour == currentHour && startMin <= currentMin) ) && 
+                ( endHour > currentHour || (endHour == currentHour && endMin >= currentMin) ) && motorFlag2 == 0 && motorTempOff2 == 0 && motorDay == true ) {
+                    
+                  if ( nextTempRunHour2 == currentHour && nextTempRunMin2 <= currentMin ) {
+                        motorTestRun2();
+                    }
+           }  
+
+    delay(5000); 
+    lcd.noBacklight(); //REST OF LCD
+    delay(2000); 
+
+    if (printFlag == true )
+    {
+    l1 = "HAR HAR MAHADEV" ;
+    l2 = "JAI MAHA KAL" ;
+    l3 = "Designed by " ;
+    l4 = "       Deepak Lohia" ; 
+    printFlag = false;
+    }
+    else
+    {
+    l1 = "JAI GURU DEV" ;
+    l2 = "JAI SHIV SHANKAR" ;
+    l3 = "Designed by " ;
+    l4 = "       Deepak Lohia" ;
+    printFlag = true;
+    }
+
+    printLCD() ;
+
+    delay(10000); 
+  
+    lcd.noBacklight(); //REST OF LCD
+    delay(2000);  
+    l3 = "" ;
+    l4 = "" ;
+}
+
+void getMotorDay(){
+
+  now = rtc.getDateTime();  
+  lastMotorDay =  now.day;
+  currentDay =  now.day;
+  currentMonth = now.month;
+  currentYear = now.year;
+  nextTempRunHour1 = now.hour ;
+  nextTempRunMin1 = now.minute  ;
+  nextTempRunHour2 = now.hour ;
+  nextTempRunMin2 =now.minute  ;
+  
+  l1 = "Todays Date:"  ;
+  l2 =  String(currentDay)  + "/" + String(currentMonth) + "/" + String(currentYear) ;  
+  l3 = "Last Water Date :"  ;
+  l4 =  String(lastWaterDay)  + "/" + String(lastWaterMonth) + "/" + String(lastWaterYear) ;  
+  printLCD() ;
+  printSerial(false);
+  delay(4000);
+
+  //int daydiff = dateDiff(lastWaterYear,  lastWaterMonth,  lastWaterDay , 2019,  12,  12)  ; 
+  int daydiff = dateDiff(lastWaterYear,  lastWaterMonth,  lastWaterDay , currentYear,  currentMonth,  currentDay)  ; 
+  int dayRem = daydiff % 2 ;
+  l1 = "Days Diffrnce = " + String(daydiff) ;
+  l2 = "Remainder = " + String(dayRem);
+
+  if (dayRem != 0){ 
+      l3 = "TDY IS NOT MTR DAY" ;
+      motorDay =  false;
+    } else {
+      l3 = "TDY IS MTR DAY" ;
+      motorDay =  true;
+    }  
+
+  l4 = "";
+  printLCD() ;
+  printSerial(false);
+  delay(3000);
+}
+  
+void motorTestRun1(){
+    digitalWrite(motorRelay1, ON); //START MOTOR 1
+    motorFlag1 = 1 ;
+    l3 = "MTR1: TEST START" ;
+    printLCD() ;
+    delay(35000); //35 seconds
+    sensorValue1 = analogRead(sensorPin1); 
+      
+          if (sensorValue1< sensorLimit1 ) {
+              l3 = "MTR1:-WTR DETED" ;
+          }
+          else if (sensorValue1 > sensorLimit1) {
+              l3 = "MTR1:-WTR NOT DETD" ;
+              digitalWrite(motorRelay1, OFF); //STOP MOTOR 1
+              motorFlag1 = 0 ;
+  
+                //putting a gap of 15 min
+                 if (nextTempRunMin1 + motorTempRunInterval >= 60  ){
+                    nextTempRunMin1 = (nextTempRunMin1 + motorTempRunInterval) - 60 ;
+                    nextTempRunHour1 = nextTempRunHour1 + 1 ;
+                 }
+                 else{
+                    nextTempRunMin1 = (nextTempRunMin1 + motorTempRunInterval)   ;
+                 }
+                 l4 = "M1/M2 NXT RUN:" + String(nextTempRunHour1) + ":" +  String(nextTempRunMin1) ;
+          }
+          
+          printLCD() ;
+}
+
+void motorTestRun2(){
+    digitalWrite(motorRelay2, ON); // START MOTOR 2
+    motorFlag2 = 1 ;
+    l3 = "MTR2: TEST START" ;
+    printLCD() ;
+    delay(45000); //45 seconds
+    sensorValue2 = analogRead(sensorPin2); 
+     
+           if (sensorValue2 < sensorLimit2) {
+            l3 = "MTR2:-WTR DETED" ;
+            }
+          else if (sensorValue2 > sensorLimit2 ) {
+            l3 = "MTR2:-WTR NOT DETD" ;
+            digitalWrite(motorRelay2, OFF); //STOP MOTOR 2
+            motorFlag2 = 0 ; 
+              //putting wait for 15 min
+              if (nextTempRunMin2 + motorTempRunInterval >= 60  ){
+                nextTempRunMin2 = (nextTempRunMin2 + motorTempRunInterval) - 60 ;
+                nextTempRunHour2 = nextTempRunHour2 + 1 ;
+                }
+               else{
+                nextTempRunMin2 = (nextTempRunMin2 + motorTempRunInterval)   ;
+                }
+             //l4 = l4 + "M2 X:" + String(nextTempRunHour2) + ":" +  String(nextTempRunMin2) ;
+             
+          }
+
+          printLCD() ;
+}
+ 
+void printSerial (boolean newLine){
+    if (newLine == true){
+      Serial.println(l1);
+      Serial.println(l2);
+      }
+     else{
+      Serial.println(l1 + " " + l2);
+      }
+}
+
+void printLCD (){
+   lcd.backlight();
+   lcd.clear();
+   lcd.setCursor(0,0);
+   lcd.print(l1);
+   lcd.setCursor(0,1);
+   lcd.print(l2);
+   lcd.setCursor(0,2);
+   lcd.print(l3);
+   lcd.setCursor(0,3);
+   lcd.print(l4);
+   delay(5000);
+   //lcd.noBacklight(); 
+}
+
+int dateDiff(int year1, int mon1, int day1, int year2, int mon2, int day2)
+{
+    int ref,dd1,dd2,i;
+    int leapCnt1 = getLeap(year1);
+    int leapCnt2 = getLeap(year2);
+    
+    ref = year1;
+    if(year2<year1)
+    ref = year2;
+    dd1=0;
+    dd1=dater(mon1);
+    for(i=ref;i<year1;i++)
+    {
+        if(i%4==0)
+        dd1+=1;
+    }
+    dd1=dd1+day1+(year1-ref)*leapCnt1;
+    dd2=0;
+    for(i=ref;i<year2;i++)
+    {
+        if(i%4==0)
+        dd2+=1;
+    }
+    dd2=dater(mon2)+dd2+day2+((year2-ref)*leapCnt2);
+    return dd2-dd1;
+}
+
+int dater(int x)
+{ const int dr[]= { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
+  return dr[x-1];
+}
+
+int getLeap(int yr)
+{
+  if  (yr == 2020 || yr == 2024 || yr == 2028 || yr == 2032 ) {
+      return 366 ;
+    }
+  else{
+      return 365;
+   }
+}
