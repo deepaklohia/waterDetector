@@ -1,4 +1,9 @@
 ### &#x1F534;Problem Statement : We need to wake up early to check water at random intervals. with this automation we can schedule and run the water automatically using Alexa Routines. Blynk will have a preview and history of data if the water was detected and run time as well. ###
+
+
+## Youtube : Water Detection System using Arduino  ##
+[![YOUTUBE](https://github.com/user-attachments/assets/32bf340a-1b99-406c-af8c-cc571b5c042a)](https://youtu.be/We5FqSh9aIE)
+
 ## Basic Ardiuno Water Detector using RTC Clock (Basic) ##
 detecting pipeline water using Arduino automation 
 
@@ -7,6 +12,8 @@ detecting pipeline water using Arduino automation
 
 you are free to use the automation . There might be upgrades and changes in the Tools and technology by the time you start using the automation . use google for ur queries. 
 
+## Youtube : Water Detection System using IoT  ##
+[![YOUTUBE](https://github.com/user-attachments/assets/3f605e31-ccc3-4f9b-b228-355d9e7bf456)](https://youtu.be/cSN_DNjiItk)
 
 ## &#x1F34F; Water Detection System using NodeMCU and Blynk IoT (Advanced) ##
 ![BLUYN](https://github.com/user-attachments/assets/b279c56d-5d85-4f13-9a76-55b63aff8ced)
