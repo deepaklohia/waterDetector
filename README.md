@@ -19,7 +19,4 @@ you are free to use the automation . There might be upgrades and changes in the 
 
 ![Blynk Preview](https://github.com/user-attachments/assets/5f7cddc4-b881-4358-bf2d-b8629c553f62)
 
-enjoy 
-
-JDGJSS
-Deepak Lohia
+### $${\color{green}JDGJSS \space Powered \space by: Deepak  \space Lohia \space Automations}$$ ###
