@@ -1,4 +1,6 @@
-#define BLYNK_TEMPLATE_ID "blynkse"
+//DEVELOPED BY Deepak Lohia at www.dlohia.com
+
+#define BLYNK_TEMPLATE_ID "blynk"
 #define BLYNK_TEMPLATE_NAME "MOTOR2"
 #define BLYNK_FIRMWARE_VERSION "0.0.4"
 
