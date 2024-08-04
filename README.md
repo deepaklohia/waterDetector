@@ -14,6 +14,9 @@ you are free to use the automation . There might be upgrades and changes in the 
 ## Original tool Snapshot ##
 ![ORIGINAL](https://github.com/user-attachments/assets/a7c298f1-df53-40f9-9077-38fe039e13ec)
 
+## Blynk Preview ##
+
+![Blynk Preview](https://github.com/user-attachments/assets/5f7cddc4-b881-4358-bf2d-b8629c553f62)
 
 enjoy 
 
